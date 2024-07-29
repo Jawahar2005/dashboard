@@ -2,23 +2,29 @@ import streamlit as st
 import sqlite3
 import os
 
+# Ensure database directory exists
+db_path = 'users.db'
+if not os.path.exists(db_path):
+    with open(db_path, 'w'):
+        pass
+
 # Database functions
 def create_usertable():
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS users(username TEXT, password TEXT)')
     conn.commit()
     conn.close()
 
 def add_userdata(username, password):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute('INSERT INTO users(username, password) VALUES (?, ?)', (username, password))
     conn.commit()
     conn.close()
 
 def login_user(username, password):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute('SELECT * FROM users WHERE username =? AND password = ?', (username, password))
     data = c.fetchall()
@@ -35,7 +41,7 @@ def login_page():
         if result:
             st.session_state["logged_in"] = True
             st.session_state["username"] = username
-            st.experimental_set_query_params(rerun="true")  # Use query params to trigger rerun
+            st.experimental_rerun()
         else:
             st.warning("Incorrect Username/Password")
 
@@ -44,7 +50,6 @@ def signup_page():
     new_user = st.text_input("Username")
     new_password = st.text_input("Password", type='password')
     if st.button("Sign Up"):
-        create_usertable()
         add_userdata(new_user, new_password)
         st.success("You have successfully created an account!")
         st.info("Go to the Login page to log in.")
@@ -161,7 +166,7 @@ def dashboard():
                     submit_button = st.form_submit_button(label="Select")
                     if submit_button:
                         st.session_state["selected_tracker"] = tracker['name']
-                        st.experimental_set_query_params(rerun="true")
+                        st.experimental_rerun()
         else:
             with col2:
                 with st.form(key=f"form_{tracker['name']}"):
@@ -177,13 +182,13 @@ def dashboard():
                     submit_button = st.form_submit_button(label="Select")
                     if submit_button:
                         st.session_state["selected_tracker"] = tracker['name']
-                        st.experimental_set_query_params(rerun="true")
+                        st.experimental_rerun()
     
     if "selected_tracker" in st.session_state:
         show_monthly_report(st.session_state["selected_tracker"])
         if st.button("Close Report"):
             del st.session_state["selected_tracker"]
-            st.experimental_set_query_params(rerun="true")
+            st.experimental_rerun()
 
 def main():
     # Ensure the user table is created at the start
