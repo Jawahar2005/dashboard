@@ -1,5 +1,6 @@
 import streamlit as st
 import sqlite3
+import os
 
 # Database functions
 def create_usertable():
@@ -185,6 +186,9 @@ def dashboard():
             st.experimental_set_query_params(rerun="true")
 
 def main():
+    # Ensure the user table is created at the start
+    create_usertable()
+
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
 
