@@ -1,30 +1,95 @@
 import streamlit as st
 import sqlite3
 import os
+import random
 
-# Ensure database directory exists
-db_path = 'users.db'
-if not os.path.exists(db_path):
-    with open(db_path, 'w'):
-        pass
+# Define weights for electricity, water, and petrol usage
+WEIGHTS = {
+    'electricity': 0.4,
+    'water': 0.3,
+    'petrol': 0.3
+}
+
+# Define max possible usage for normalization (adjust based on realistic values)
+MAX_USAGE = {
+    'electricity': 100,  # e.g., kWh
+    'water': 500,        # e.g., liters
+    'petrol': 50         # e.g., liters
+}
+
+# Initialize data storage for daily usage and green scores
+daily_usage = {
+    'electricity': [],
+    'water': [],
+    'petrol': [],
+    'green_scores': []
+}
+
+# Function to calculate daily green score
+def calculate_daily_green_score(electricity_usage, water_usage, petrol_usage):
+    normalized_electricity = electricity_usage / MAX_USAGE['electricity']
+    normalized_water = water_usage / MAX_USAGE['water']
+    normalized_petrol = petrol_usage / MAX_USAGE['petrol']
+    
+    green_score = (normalized_electricity * WEIGHTS['electricity'] +
+                   normalized_water * WEIGHTS['water'] +
+                   normalized_petrol * WEIGHTS['petrol'])
+    
+    return green_score
+
+# Function to add daily usage data and calculate daily green score
+def add_daily_usage(electricity_usage, water_usage, petrol_usage):
+    daily_usage['electricity'].append(electricity_usage)
+    daily_usage['water'].append(water_usage)
+    daily_usage['petrol'].append(petrol_usage)
+    
+    daily_green_score = calculate_daily_green_score(electricity_usage, water_usage, petrol_usage)
+    daily_usage['green_scores'].append(daily_green_score)
+    
+    return daily_green_score
+
+# Function to calculate cumulative monthly green score
+def calculate_monthly_green_score():
+    total_days = len(daily_usage['green_scores'])
+    cumulative_score = sum(daily_usage['green_scores'])
+    average_monthly_green_score = cumulative_score / total_days if total_days > 0 else 0
+    return average_monthly_green_score
+
+# Function to calculate interest rate based on green score
+def calculate_interest_rate(green_score, base_rate=5.0, discount_rate=2.0):
+    # Assuming green_score is between 0 and 1
+    interest_rate = base_rate - (green_score * discount_rate)
+    return max(interest_rate, 0)  # Ensure the interest rate is not negative
+
+# Generate random daily usage data for 30 days
+def generate_random_daily_usage():
+    days_in_month = 30
+    for day in range(days_in_month):
+        electricity_usage = random.uniform(0, MAX_USAGE['electricity'])
+        water_usage = random.uniform(0, MAX_USAGE['water'])
+        petrol_usage = random.uniform(0, MAX_USAGE['petrol'])
+        
+        daily_green_score = add_daily_usage(electricity_usage, water_usage, petrol_usage)
+        print(f"Day {day+1}: Electricity = {electricity_usage:.2f} kWh, Water = {water_usage:.2f} liters, Petrol = {petrol_usage:.2f} liters")
+        print(f"Day {day+1} Green Score: {daily_green_score:.2f}")
 
 # Database functions
 def create_usertable():
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect('users.db')
     c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS users(username TEXT, password TEXT)')
     conn.commit()
     conn.close()
 
 def add_userdata(username, password):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect('users.db')
     c = conn.cursor()
     c.execute('INSERT INTO users(username, password) VALUES (?, ?)', (username, password))
     conn.commit()
     conn.close()
 
 def login_user(username, password):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect('users.db')
     c = conn.cursor()
     c.execute('SELECT * FROM users WHERE username =? AND password = ?', (username, password))
     data = c.fetchall()
@@ -100,8 +165,19 @@ def dashboard():
         {"name": "Electricity", "today": 50, "month": 1500},
         {"name": "Transport", "today": 20, "month": 600},
         {"name": "Water", "today": 100, "month": 3000},
-        {"name": "Incentives", "today": 10, "month": 300},
+        {"name": "Green Score", "today": 0, "month": 0},
     ]
+
+    # Generate random daily usage data
+    generate_random_daily_usage()
+
+    # Calculate cumulative monthly green score
+    monthly_green_score = calculate_monthly_green_score()
+    st.session_state["green_score"] = monthly_green_score
+
+    # Calculate interest rate based on the monthly green score
+    interest_rate = calculate_interest_rate(monthly_green_score)
+    st.session_state["interest_rate"] = interest_rate
 
     st.markdown(
         """
@@ -185,6 +261,10 @@ def dashboard():
         show_monthly_report(st.session_state["selected_tracker"])
         if st.button("Close Report"):
             del st.session_state["selected_tracker"]
+
+    # Display monthly green score and interest rate
+    st.markdown(f"<div class='report-box'><h3>Monthly Green Score: {monthly_green_score:.2f}</h3></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='report-box'><h3>Interest Rate: {interest_rate:.2f}%</h3></div>", unsafe_allow_html=True)
 
 def main():
     # Ensure the user table is created at the start
