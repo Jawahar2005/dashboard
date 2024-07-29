@@ -41,7 +41,6 @@ def login_page():
         if result:
             st.session_state["logged_in"] = True
             st.session_state["username"] = username
-            st.experimental_rerun()
         else:
             st.warning("Incorrect Username/Password")
 
@@ -166,7 +165,6 @@ def dashboard():
                     submit_button = st.form_submit_button(label="Select")
                     if submit_button:
                         st.session_state["selected_tracker"] = tracker['name']
-                        st.experimental_rerun()
         else:
             with col2:
                 with st.form(key=f"form_{tracker['name']}"):
@@ -182,13 +180,11 @@ def dashboard():
                     submit_button = st.form_submit_button(label="Select")
                     if submit_button:
                         st.session_state["selected_tracker"] = tracker['name']
-                        st.experimental_rerun()
     
     if "selected_tracker" in st.session_state:
         show_monthly_report(st.session_state["selected_tracker"])
         if st.button("Close Report"):
             del st.session_state["selected_tracker"]
-            st.experimental_rerun()
 
 def main():
     # Ensure the user table is created at the start
